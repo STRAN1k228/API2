@@ -15,6 +15,7 @@ class MainWindow(QMainWindow):
         super().__init__(*args, **kwargs)
         uic.loadUi('task.ui', self)
 
+
         self.map_zoom = 17
         self.map_ll = [30.302348, 59.991619]
         self.map_theme = 'map'
