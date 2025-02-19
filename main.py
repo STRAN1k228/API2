@@ -2,7 +2,7 @@ import sys
 import requests
 from PyQt6 import uic, QtCore
 from PyQt6.QtGui import QPixmap, QImage
-from PyQt6.QtWidgets import QApplication, QLabel, QMainWindow, QPushButton
+from PyQt6.QtWidgets import QApplication, QLabel, QMainWindow, QPushButton, QLineEdit
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
@@ -15,22 +15,45 @@ class MainWindow(QMainWindow):
         super().__init__(*args, **kwargs)
         uic.loadUi('task.ui', self)
 
-
         self.map_zoom = 17
         self.map_ll = [30.302348, 59.991619]
         self.map_theme = 'map'
+
         self.toggle_theme_button = self.findChild(QPushButton, 'toggleThemeButton')
         self.toggle_theme_button.clicked.connect(self.toggle_theme)
+        self.search_line_edit = self.findChild(QLineEdit, 'searchLineEdit')
+        self.search_button = self.findChild(QPushButton, 'searchButton')
+        self.search_button.clicked.connect(self.search_location)
+        self.search_line_edit.returnPressed.connect(self.search_location)  # Поиск по нажатию Enter
 
         self.refresh_map()
 
     def toggle_theme(self):
-
         if self.map_theme == 'map':
             self.map_theme = 'dark'
         else:
             self.map_theme = 'map'
         self.refresh_map()
+
+    def search_location(self):
+        query = self.search_line_edit.text()
+        if query:
+            geocode_params = {
+                'geocode': query,
+                'apikey': api_key,
+                'format': 'json'
+            }
+            geocode_response = requests.get('https://geocode-maps.yandex.ru/1.x/', params=geocode_params)
+            if geocode_response.status_code == 200:
+                geocode_data = geocode_response.json()
+                if geocode_data['response']['GeoObjectCollection']['featureMember']:
+                    coordinates = geocode_data['response']['GeoObjectCollection']['featureMember'][0]['GeoObject']['Point']['pos']
+                    self.map_ll = list(map(float, coordinates.split()))
+                    self.refresh_map()
+                else:
+                    print("Объект не найден.")
+            else:
+                print("Ошибка при выполнении запроса геокодирования.")
 
     def keyPressEvent(self, event):
         if event.key() == QtCore.Qt.Key.Key_PageUp:
@@ -54,7 +77,7 @@ class MainWindow(QMainWindow):
         map_params = {
             'll': ','.join(map(str, self.map_ll)),
             'z': self.map_zoom,
-            'l': self .map_theme,  # Добавляем параметр темы
+            'l': self.map_theme,
             'apikey': api_key
         }
         session = requests.Session()
